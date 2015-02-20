@@ -1,19 +1,23 @@
 #![feature(old_io,net,core,io)]
 use std::net::UdpSocket;
+use std::old_io::BufReader;
 
 const NTP_SERVER: &'static str = "sundial.columbia.edu:123";
 const UDP_LOCAL: &'static str = "0.0.0.0:35000";
 
 const NTP_CLIENT: u8 = 3;
+const NTP_HEADER_SIZE: usize = 48; // 12 words
 
 const LEAP_SHIFT: i32 = 6;
 const VERSION_SHIFT: i32 = 3;
 
+#[derive(Clone, Debug)]
 struct NTPTimestamp {
     seconds: u32,
     fraction: u32
 }
 
+#[derive(Debug)]
 struct NTPHeader {
     leap: u8,
     version: u8,
@@ -69,9 +73,39 @@ impl NTPHeader {
         vec.write_be_u32(self.transmit_timestamp.fraction).unwrap();
         vec
     }
+
+    pub fn decode(size: usize, buf: & [u8]) -> NTPHeader {
+        let mut reader = BufReader::new(buf);
+        let mut header = NTPHeader::new();
+
+        if size < NTP_HEADER_SIZE {
+            panic!("{} bytes expected in NTP header; {} bytes received", NTP_HEADER_SIZE, size);
+        }
+
+        let leap_version_mode = reader.read_u8().unwrap();
+        header.leap = (leap_version_mode >> LEAP_SHIFT) & 0b11;
+        header.version = (leap_version_mode >> VERSION_SHIFT) & 0b111;
+        header.mode = leap_version_mode & 0b111;
+        header.stratum = reader.read_u8().unwrap();
+        header.poll = reader.read_u8().unwrap();
+        header.precision = reader.read_u8().unwrap();
+        header.root_delay = reader.read_be_u32().unwrap();
+        header.root_dispersion = reader.read_be_u32().unwrap();
+        header.reference_id = reader.read_be_u32().unwrap();
+        header.reference_timestamp.seconds = reader.read_be_u32().unwrap();
+        header.reference_timestamp.fraction = reader.read_be_u32().unwrap();
+        header.origin_timestamp.seconds = reader.read_be_u32().unwrap();
+        header.origin_timestamp.fraction = reader.read_be_u32().unwrap();
+        header.receive_timestamp.seconds = reader.read_be_u32().unwrap();
+        header.receive_timestamp.fraction = reader.read_be_u32().unwrap();
+        header.transmit_timestamp.seconds = reader.read_be_u32().unwrap();
+        header.transmit_timestamp.fraction = reader.read_be_u32().unwrap();
+
+        header
+    }
 }
 
-fn receive_network_timestamp() -> Result<(), std::io::Error> {
+fn receive_network_timestamp() -> Result<NTPTimestamp, std::io::Error> {
     let header = NTPHeader::new();
     let message = header.encode();
 
@@ -81,17 +115,20 @@ fn receive_network_timestamp() -> Result<(), std::io::Error> {
 
     let mut buf = [0u8; 1000];
 
-    let (amt, src) = try!(socket.recv_from(buf.as_mut_slice()));
-    println!("Got {} bytes from {}.", amt, src);
+    let (amt, _) = try!(socket.recv_from(buf.as_mut_slice()));
 
     drop(socket);
 
-    Ok(())
+    let header = NTPHeader::decode(amt, &buf);
+
+    Ok(header.transmit_timestamp.clone())
 }
 
 fn main() {
-    match receive_network_timestamp() {
-        Ok(_) => {},
+    let timestamp = match receive_network_timestamp() {
+        Ok(s) => s,
         Err(e) => panic!("Error retrieving network timestamp: {}", e),
-    }
+    };
+
+    println!("seconds:{} fraction:{}", timestamp.seconds, timestamp.fraction);
 }
