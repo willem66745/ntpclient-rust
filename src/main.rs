@@ -1,10 +1,13 @@
 #![feature(old_io,net,core)]
 use std::net::UdpSocket;
 
-static NTP_CLIENT: u8 = 3;
+const NTP_SERVER: &'static str = "sundial.columbia.edu:123";
+const UDP_LOCAL: &'static str = "0.0.0.0:35000";
 
-static LEAP_SHIFT: i32 = 6;
-static VERSION_SHIFT: i32 = 3;
+const NTP_CLIENT: u8 = 3;
+
+const LEAP_SHIFT: i32 = 6;
+const VERSION_SHIFT: i32 = 3;
 
 struct NTPTimestamp {
     seconds: u32,
@@ -72,12 +75,12 @@ fn main() {
     let header = NTPHeader::new();
     let message = header.encode();
 
-    let socket = match UdpSocket::bind("0.0.0.0:35000") {
+    let socket = match UdpSocket::bind(UDP_LOCAL) {
         Ok(s) => s,
         Err(e) => panic!("couldn't bind socket: {}", e),
     };
 
-    match socket.send_to(message.as_slice(), ("sundial.columbia.edu:123")) {
+    match socket.send_to(message.as_slice(), (NTP_SERVER)) {
         Ok(s) => s,
         Err(e) => panic!("Unable to send datagram: {}", e),
     };
@@ -90,7 +93,6 @@ fn main() {
         },
         Err(e) => panic!("couldn't receive data: {}", e),
     };
-
 
     drop(socket);
 }
