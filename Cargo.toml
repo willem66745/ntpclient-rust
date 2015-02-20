@@ -1,0 +1,5 @@
+[package]
+
+name = "ntpclient"
+version = "0.0.1"
+authors = ["ntpclient-rust authors <willem66745@gmail.com>"]
