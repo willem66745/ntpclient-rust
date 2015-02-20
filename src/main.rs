@@ -1,4 +1,4 @@
-#![feature(old_io,net,core)]
+#![feature(old_io,net,core,io)]
 use std::net::UdpSocket;
 
 const NTP_SERVER: &'static str = "sundial.columbia.edu:123";
@@ -71,28 +71,27 @@ impl NTPHeader {
     }
 }
 
-fn main() {
+fn receive_network_timestamp() -> Result<(), std::io::Error> {
     let header = NTPHeader::new();
     let message = header.encode();
 
-    let socket = match UdpSocket::bind(UDP_LOCAL) {
-        Ok(s) => s,
-        Err(e) => panic!("couldn't bind socket: {}", e),
-    };
+    let socket = try!(UdpSocket::bind(UDP_LOCAL));
 
-    match socket.send_to(message.as_slice(), (NTP_SERVER)) {
-        Ok(s) => s,
-        Err(e) => panic!("Unable to send datagram: {}", e),
-    };
+    try!(socket.send_to(message.as_slice(), (NTP_SERVER)));
 
     let mut buf = [0u8; 1000];
 
-    match socket.recv_from(buf.as_mut_slice()) {
-        Ok((amt, src)) => {
-            println!("Got {} bytes from {}.", amt, src);
-        },
-        Err(e) => panic!("couldn't receive data: {}", e),
-    };
+    let (amt, src) = try!(socket.recv_from(buf.as_mut_slice()));
+    println!("Got {} bytes from {}.", amt, src);
 
     drop(socket);
+
+    Ok(())
+}
+
+fn main() {
+    match receive_network_timestamp() {
+        Ok(_) => {},
+        Err(e) => panic!("Error retrieving network timestamp: {}", e),
+    }
 }
