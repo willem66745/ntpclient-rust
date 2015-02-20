@@ -1,20 +1,30 @@
 #![feature(old_io,net,core,io)]
+extern crate time;
 use std::net::UdpSocket;
 use std::old_io::BufReader;
+use time::{Timespec,at};
+use std::num::Float;
 
 const NTP_SERVER: &'static str = "sundial.columbia.edu:123";
 const UDP_LOCAL: &'static str = "0.0.0.0:35000";
 
 const NTP_CLIENT: u8 = 3;
 const NTP_HEADER_SIZE: usize = 48; // 12 words
+const NTP_TO_UNIX_EPOCH: i64 = 2208988800;
 
 const LEAP_SHIFT: i32 = 6;
 const VERSION_SHIFT: i32 = 3;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct NTPTimestamp {
     seconds: u32,
     fraction: u32
+}
+
+impl NTPTimestamp {
+    fn as_timespec(&self) -> Timespec {
+        Timespec{sec: (self.seconds as i64) - NTP_TO_UNIX_EPOCH, nsec: (((self.fraction as f64) / 2f64.powi(32) ) / 1e-9) as i32}
+    }
 }
 
 #[derive(Debug)]
@@ -35,7 +45,7 @@ struct NTPHeader {
 }
 
 impl NTPHeader {
-    pub fn new() -> NTPHeader {
+    fn new() -> NTPHeader {
         NTPHeader {
             leap: 0,
             version: 3,
@@ -53,7 +63,7 @@ impl NTPHeader {
         }
     }
 
-    pub fn encode(&self) -> Vec<u8> {
+    fn encode(&self) -> Vec<u8> {
         let mut vec = Vec::<u8>::new();
 
         vec.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode).unwrap();
@@ -74,7 +84,7 @@ impl NTPHeader {
         vec
     }
 
-    pub fn decode(size: usize, buf: & [u8]) -> NTPHeader {
+    fn decode(size: usize, buf: & [u8]) -> NTPHeader {
         let mut reader = BufReader::new(buf);
         let mut header = NTPHeader::new();
 
@@ -105,7 +115,7 @@ impl NTPHeader {
     }
 }
 
-fn receive_network_timestamp() -> Result<NTPTimestamp, std::io::Error> {
+pub fn receive_network_timestamp() -> Result<Timespec, std::io::Error> {
     let header = NTPHeader::new();
     let message = header.encode();
 
@@ -121,7 +131,7 @@ fn receive_network_timestamp() -> Result<NTPTimestamp, std::io::Error> {
 
     let header = NTPHeader::decode(amt, &buf);
 
-    Ok(header.transmit_timestamp.clone())
+    Ok(header.transmit_timestamp.as_timespec())
 }
 
 fn main() {
@@ -130,5 +140,5 @@ fn main() {
         Err(e) => panic!("Error retrieving network timestamp: {}", e),
     };
 
-    println!("seconds:{} fraction:{}", timestamp.seconds, timestamp.fraction);
+    println!("{}", at(timestamp).asctime());
 }
