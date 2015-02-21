@@ -1,3 +1,5 @@
+//! Tools to retrieve Internet-time using NTP protocol.
+
 use std;
 use std::net::{UdpSocket, lookup_host, SocketAddr};
 use std::num::Float;
@@ -114,6 +116,12 @@ impl NTPHeader {
     }
 }
 
+/// `receive_network_timestamp` retrieves the current from the Internet using
+/// the NTP protocol.
+///
+/// # Arguments
+///
+/// * `host` - The NTP server (i.e. sundial.columbia.edu).
 pub fn receive_network_timestamp(host: &str) -> Result<Timespec, std::io::Error> {
     let host = try!(lookup_host(host)).next().unwrap();
     let addr = SocketAddr::new(try!(host).ip(), NTP_PORT);
