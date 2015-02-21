@@ -6,3 +6,5 @@ authors = ["ntpclient-rust authors <willem66745@gmail.com>"]
 
 [dependencies]
 time = "*"
+toml = "*"
+byteorder = "*"
