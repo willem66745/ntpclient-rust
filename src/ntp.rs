@@ -1,13 +1,8 @@
 //! Tools to retrieve Internet-time using NTP protocol.
 
-use std;
-use std::net::{UdpSocket, lookup_host, SocketAddr};
 use std::num::Float;
 use std::old_io::BufReader;
 use time::Timespec;
-
-const NTP_PORT: u16 = 123;
-const UDP_LOCAL: &'static str = "0.0.0.0:35000";
 
 const NTP_CLIENT: u8 = 3;
 const NTP_HEADER_SIZE: usize = 48; // 12 words
@@ -17,19 +12,19 @@ const LEAP_SHIFT: i32 = 6;
 const VERSION_SHIFT: i32 = 3;
 
 #[derive(Debug)]
-struct NTPTimestamp {
+pub struct NTPTimestamp {
     seconds: u32,
     fraction: u32
 }
 
 impl NTPTimestamp {
-    fn as_timespec(&self) -> Timespec {
+    pub fn as_timespec(&self) -> Timespec {
         Timespec{sec: (self.seconds as i64) - NTP_TO_UNIX_EPOCH, nsec: (((self.fraction as f64) / 2f64.powi(32) ) / 1e-9) as i32}
     }
 }
 
 #[derive(Debug)]
-struct NTPHeader {
+pub struct NTPHeader {
     leap: u8,
     version: u8,
     mode: u8,
@@ -42,11 +37,11 @@ struct NTPHeader {
     reference_timestamp: NTPTimestamp,
     origin_timestamp: NTPTimestamp,
     receive_timestamp: NTPTimestamp,
-    transmit_timestamp: NTPTimestamp,
+    pub transmit_timestamp: NTPTimestamp,
 }
 
 impl NTPHeader {
-    fn new() -> NTPHeader {
+    pub fn new() -> NTPHeader {
         NTPHeader {
             leap: 0,
             version: 3,
@@ -64,7 +59,7 @@ impl NTPHeader {
         }
     }
 
-    fn encode(&self) -> Vec<u8> {
+    pub fn encode(&self) -> Vec<u8> {
         let mut vec = Vec::<u8>::new();
 
         vec.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode).unwrap();
@@ -85,7 +80,7 @@ impl NTPHeader {
         vec
     }
 
-    fn decode(size: usize, buf: & [u8]) -> NTPHeader {
+    pub fn decode(size: usize, buf: & [u8]) -> NTPHeader {
         let mut reader = BufReader::new(buf);
         let mut header = NTPHeader::new();
 
@@ -114,33 +109,5 @@ impl NTPHeader {
 
         header
     }
-}
-
-/// `receive_network_timestamp` retrieves the current from the Internet using
-/// the NTP protocol.
-///
-/// # Arguments
-///
-/// * `host` - The NTP server (i.e. sundial.columbia.edu).
-pub fn receive_network_timestamp(host: &str) -> Result<Timespec, std::io::Error> {
-    let host = try!(lookup_host(host)).next().unwrap();
-    let addr = SocketAddr::new(try!(host).ip(), NTP_PORT);
-    let header = NTPHeader::new();
-    let message = header.encode();
-
-    let socket = try!(UdpSocket::bind(UDP_LOCAL));
-
-    try!(socket.send_to(message.as_slice(), &addr));
-
-    let mut buf = [0u8; 1000];
-
-    // TODO: Rust doesn't support timeouts yet
-    let (amt, _) = try!(socket.recv_from(buf.as_mut_slice()));
-
-    drop(socket);
-
-    let header = NTPHeader::decode(amt, &buf);
-
-    Ok(header.transmit_timestamp.as_timespec())
 }
 
