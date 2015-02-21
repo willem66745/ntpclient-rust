@@ -134,6 +134,7 @@ pub fn receive_network_timestamp(host: &str) -> Result<Timespec, std::io::Error>
 
     let mut buf = [0u8; 1000];
 
+    // TODO: Rust doesn't support timeouts yet
     let (amt, _) = try!(socket.recv_from(buf.as_mut_slice()));
 
     drop(socket);
