@@ -9,13 +9,12 @@ use time::Timespec;
 const NTP_PORT: u16 = 123;
 const UDP_LOCAL: &'static str = "0.0.0.0:35000";
 
-/// `receive_network_timestamp` retrieves the current from the Internet using
-/// the NTP protocol.
+/// `retrieve_ntp_timestamp` retrieves the current time from a NTP server.
 ///
 /// # Arguments
 ///
 /// * `host` - The NTP server (i.e. sundial.columbia.edu).
-pub fn receive_network_timestamp(host: &str) -> Result<Timespec, std::io::Error> {
+pub fn retrieve_ntp_timestamp(host: &str) -> Result<Timespec, std::io::Error> {
     let host = try!(lookup_host(host)).next().unwrap();
     let addr = SocketAddr::new(try!(host).ip(), NTP_PORT);
     let header = ntp::NTPHeader::new();
@@ -41,5 +40,5 @@ pub fn receive_network_timestamp(host: &str) -> Result<Timespec, std::io::Error>
 fn receive_timestamp() {
     const NTP_SERVER: &'static str = "sundial.columbia.edu";
 
-    receive_network_timestamp(NTP_SERVER).unwrap();
+    retrieve_ntp_timestamp(NTP_SERVER).unwrap();
 }
