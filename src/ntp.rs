@@ -1,10 +1,10 @@
-use std::net::UdpSocket;
+use std;
+use std::net::{UdpSocket, lookup_host, SocketAddr};
+use std::num::Float;
 use std::old_io::BufReader;
 use time::Timespec;
-use std::num::Float;
-use std;
 
-const NTP_SERVER: &'static str = "sundial.columbia.edu:123";
+const NTP_PORT: u16 = 123;
 const UDP_LOCAL: &'static str = "0.0.0.0:35000";
 
 const NTP_CLIENT: u8 = 3;
@@ -114,13 +114,15 @@ impl NTPHeader {
     }
 }
 
-pub fn receive_network_timestamp() -> Result<Timespec, std::io::Error> {
+pub fn receive_network_timestamp(host: &str) -> Result<Timespec, std::io::Error> {
+    let host = try!(lookup_host(host)).next().unwrap();
+    let addr = SocketAddr::new(try!(host).ip(), NTP_PORT);
     let header = NTPHeader::new();
     let message = header.encode();
 
     let socket = try!(UdpSocket::bind(UDP_LOCAL));
 
-    try!(socket.send_to(message.as_slice(), (NTP_SERVER)));
+    try!(socket.send_to(message.as_slice(), &addr));
 
     let mut buf = [0u8; 1000];
 
