@@ -7,8 +7,8 @@ Very simple Rust library to retrieve a time stamp from a
 
 ```rust
 use time::{Timespec,at};
-use ntpclient::receive_network_timestamp;
+use ntpclient::retrieve_ntp_timestamp;
 
-let timestamp :Timespec = receive_network_timestamp("sundial.columbia.edu");
+let timestamp :Timespec = retrieve_ntp_timestamp("sundial.columbia.edu");
 println!("Internet time: {}", at(timestamp).asctime());
 ```
