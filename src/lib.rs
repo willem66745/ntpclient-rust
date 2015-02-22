@@ -1,5 +1,6 @@
-#![feature(old_io,net,core,io)]
+#![feature(net,core,io)]
 extern crate time;
+extern crate byteorder;
 
 mod ntp;
 

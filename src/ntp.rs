@@ -1,8 +1,9 @@
 //! Tools to retrieve Internet-time using NTP protocol.
 
 use std::num::Float;
-use std::old_io::BufReader;
 use time::Timespec;
+use std::io::Cursor;
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 const NTP_CLIENT: u8 = 3;
 const NTP_HEADER_SIZE: usize = 48; // 12 words
@@ -19,7 +20,8 @@ pub struct NTPTimestamp {
 
 impl NTPTimestamp {
     pub fn as_timespec(&self) -> Timespec {
-        Timespec{sec: (self.seconds as i64) - NTP_TO_UNIX_EPOCH, nsec: (((self.fraction as f64) / 2f64.powi(32) ) / 1e-9) as i32}
+        Timespec{sec: (self.seconds as i64) - NTP_TO_UNIX_EPOCH,
+                 nsec: (((self.fraction as f64) / 2f64.powi(32) ) / 1e-9) as i32}
     }
 }
 
@@ -62,26 +64,35 @@ impl NTPHeader {
     pub fn encode(&self) -> Vec<u8> {
         let mut vec = Vec::<u8>::new();
 
-        vec.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode).unwrap();
-        vec.write_u8(self.stratum).unwrap();
-        vec.write_u8(self.poll).unwrap();
-        vec.write_u8(self.precision).unwrap();
-        vec.write_be_u32(self.root_delay).unwrap();
-        vec.write_be_u32(self.root_dispersion).unwrap();
-        vec.write_be_u32(self.reference_id).unwrap();
-        vec.write_be_u32(self.reference_timestamp.seconds).unwrap();
-        vec.write_be_u32(self.reference_timestamp.fraction).unwrap();
-        vec.write_be_u32(self.origin_timestamp.seconds).unwrap();
-        vec.write_be_u32(self.origin_timestamp.fraction).unwrap();
-        vec.write_be_u32(self.receive_timestamp.seconds).unwrap();
-        vec.write_be_u32(self.receive_timestamp.fraction).unwrap();
-        vec.write_be_u32(self.transmit_timestamp.seconds).unwrap();
-        vec.write_be_u32(self.transmit_timestamp.fraction).unwrap();
+        // TODO: since Vec still implements old_io::Write trait the next 4 lines does not compile
+        //vec.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode).unwrap();
+        //vec.write_u8(self.stratum).unwrap();
+        //vec.write_u8(self.poll).unwrap();
+        //vec.write_u8(self.precision).unwrap();
+
+        // TODO: remove workaround when possible
+        let first_word = ((self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode) as u32) << 24 |
+                         ((self.stratum) as u32) << 16 |
+                         ((self.poll) as u32) << 8 |
+                         (self.precision) as u32;
+        vec.write_u32::<BigEndian>(first_word).unwrap();
+
+        vec.write_u32::<BigEndian>(self.root_delay).unwrap();
+        vec.write_u32::<BigEndian>(self.root_dispersion).unwrap();
+        vec.write_u32::<BigEndian>(self.reference_id).unwrap();
+        vec.write_u32::<BigEndian>(self.reference_timestamp.seconds).unwrap();
+        vec.write_u32::<BigEndian>(self.reference_timestamp.fraction).unwrap();
+        vec.write_u32::<BigEndian>(self.origin_timestamp.seconds).unwrap();
+        vec.write_u32::<BigEndian>(self.origin_timestamp.fraction).unwrap();
+        vec.write_u32::<BigEndian>(self.receive_timestamp.seconds).unwrap();
+        vec.write_u32::<BigEndian>(self.receive_timestamp.fraction).unwrap();
+        vec.write_u32::<BigEndian>(self.transmit_timestamp.seconds).unwrap();
+        vec.write_u32::<BigEndian>(self.transmit_timestamp.fraction).unwrap();
         vec
     }
 
     pub fn decode(size: usize, buf: & [u8]) -> NTPHeader {
-        let mut reader = BufReader::new(buf);
+        let mut reader = Cursor::new(buf);
         let mut header = NTPHeader::new();
 
         if size < NTP_HEADER_SIZE {
@@ -95,19 +106,18 @@ impl NTPHeader {
         header.stratum = reader.read_u8().unwrap();
         header.poll = reader.read_u8().unwrap();
         header.precision = reader.read_u8().unwrap();
-        header.root_delay = reader.read_be_u32().unwrap();
-        header.root_dispersion = reader.read_be_u32().unwrap();
-        header.reference_id = reader.read_be_u32().unwrap();
-        header.reference_timestamp.seconds = reader.read_be_u32().unwrap();
-        header.reference_timestamp.fraction = reader.read_be_u32().unwrap();
-        header.origin_timestamp.seconds = reader.read_be_u32().unwrap();
-        header.origin_timestamp.fraction = reader.read_be_u32().unwrap();
-        header.receive_timestamp.seconds = reader.read_be_u32().unwrap();
-        header.receive_timestamp.fraction = reader.read_be_u32().unwrap();
-        header.transmit_timestamp.seconds = reader.read_be_u32().unwrap();
-        header.transmit_timestamp.fraction = reader.read_be_u32().unwrap();
+        header.root_delay = reader.read_u32::<BigEndian>().unwrap();
+        header.root_dispersion = reader.read_u32::<BigEndian>().unwrap();
+        header.reference_id = reader.read_u32::<BigEndian>().unwrap();
+        header.reference_timestamp.seconds = reader.read_u32::<BigEndian>().unwrap();
+        header.reference_timestamp.fraction = reader.read_u32::<BigEndian>().unwrap();
+        header.origin_timestamp.seconds = reader.read_u32::<BigEndian>().unwrap();
+        header.origin_timestamp.fraction = reader.read_u32::<BigEndian>().unwrap();
+        header.receive_timestamp.seconds = reader.read_u32::<BigEndian>().unwrap();
+        header.receive_timestamp.fraction = reader.read_u32::<BigEndian>().unwrap();
+        header.transmit_timestamp.seconds = reader.read_u32::<BigEndian>().unwrap();
+        header.transmit_timestamp.fraction = reader.read_u32::<BigEndian>().unwrap();
 
         header
     }
 }
-
