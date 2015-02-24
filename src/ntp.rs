@@ -61,6 +61,13 @@ impl NTPHeader {
         }
     }
 
+    fn encode_first_word<T>(&self, w: &mut T) where T: WriteBytesExt {
+        w.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode).unwrap();
+        w.write_u8(self.stratum).unwrap();
+        w.write_u8(self.poll).unwrap();
+        w.write_u8(self.precision).unwrap();
+    }
+
     pub fn encode(&self) -> Vec<u8> {
         let mut vec = Vec::<u8>::new();
 
@@ -71,11 +78,7 @@ impl NTPHeader {
         //vec.write_u8(self.precision).unwrap();
 
         // TODO: remove workaround when possible
-        let first_word = ((self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode) as u32) << 24 |
-                         ((self.stratum) as u32) << 16 |
-                         ((self.poll) as u32) << 8 |
-                         (self.precision) as u32;
-        vec.write_u32::<BigEndian>(first_word).unwrap();
+        self.encode_first_word(&mut vec);
 
         vec.write_u32::<BigEndian>(self.root_delay).unwrap();
         vec.write_u32::<BigEndian>(self.root_dispersion).unwrap();
