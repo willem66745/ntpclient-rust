@@ -1,4 +1,4 @@
-#![feature(net,core,io)]
+#![feature(net,io)]
 extern crate time;
 extern crate byteorder;
 
@@ -23,7 +23,7 @@ pub fn retrieve_ntp_timestamp(host: &str) -> Result<Timespec, std::io::Error> {
 
     let socket = try!(UdpSocket::bind(UDP_LOCAL));
 
-    try!(socket.send_to(message.as_slice(), &addr));
+    try!(socket.send_to(&message[..], &addr));
 
     let mut buf = [0u8; 1000];
 
