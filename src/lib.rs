@@ -1,4 +1,4 @@
-#![feature(net,io)]
+#![feature(net)]
 extern crate time;
 extern crate byteorder;
 
