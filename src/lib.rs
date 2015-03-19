@@ -1,10 +1,9 @@
-#![feature(net)]
 extern crate time;
 extern crate byteorder;
 
 mod ntp;
 
-use std::net::{UdpSocket, lookup_host, SocketAddr};
+use std::net::{UdpSocket};
 use time::Timespec;
 
 const NTP_PORT: u16 = 123;
@@ -16,14 +15,13 @@ const UDP_LOCAL: &'static str = "0.0.0.0:35000";
 ///
 /// * `host` - The NTP server (i.e. sundial.columbia.edu).
 pub fn retrieve_ntp_timestamp(host: &str) -> Result<Timespec, std::io::Error> {
-    let host = try!(lookup_host(host)).next().unwrap();
-    let addr = SocketAddr::new(try!(host).ip(), NTP_PORT);
     let header = ntp::NTPHeader::new();
     let message = header.encode();
 
     let socket = try!(UdpSocket::bind(UDP_LOCAL));
 
-    try!(socket.send_to(&message[..], &addr));
+    let host = format!("{host}:{port}", host=host, port=NTP_PORT);
+    try!(socket.send_to(&message[..], &host[..]));
 
     let mut buf = [0u8; 1000];
 
