@@ -4,6 +4,8 @@ use std::num::Float;
 use time::Timespec;
 use std::io::Cursor;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::io::Error as IoError;
+use std::io::ErrorKind as IoErrorKind;
 
 const NTP_CLIENT: u8 = 3;
 const NTP_HEADER_SIZE: usize = 48; // 12 words
@@ -61,66 +63,69 @@ impl NTPHeader {
         }
     }
 
-    fn encode_first_word<T>(&self, w: &mut T) where T: WriteBytesExt {
-        w.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode).unwrap();
-        w.write_u8(self.stratum).unwrap();
-        w.write_u8(self.poll).unwrap();
-        w.write_u8(self.precision).unwrap();
+    fn encode_first_word<T>(&self, w: &mut T) -> Result<(), IoError> where T: WriteBytesExt {
+        try!(w.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode));
+        try!(w.write_u8(self.stratum));
+        try!(w.write_u8(self.poll));
+        try!(w.write_u8(self.precision));
+        Ok(())
     }
 
-    pub fn encode(&self) -> Vec<u8> {
+    pub fn encode(&self) -> Result<Vec<u8>, IoError> {
         let mut vec = Vec::<u8>::new();
 
         // TODO: since Vec still implements old_io::Write trait the next 4 lines does not compile
-        //vec.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode).unwrap();
-        //vec.write_u8(self.stratum).unwrap();
-        //vec.write_u8(self.poll).unwrap();
-        //vec.write_u8(self.precision).unwrap();
+        //try!(vec.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode));
+        //try!(vec.write_u8(self.stratum));
+        //try!(vec.write_u8(self.poll));
+        //try!(vec.write_u8(self.precision));
 
         // TODO: remove workaround when possible
-        self.encode_first_word(&mut vec);
+        try!(self.encode_first_word(&mut vec));
 
-        vec.write_u32::<BigEndian>(self.root_delay).unwrap();
-        vec.write_u32::<BigEndian>(self.root_dispersion).unwrap();
-        vec.write_u32::<BigEndian>(self.reference_id).unwrap();
-        vec.write_u32::<BigEndian>(self.reference_timestamp.seconds).unwrap();
-        vec.write_u32::<BigEndian>(self.reference_timestamp.fraction).unwrap();
-        vec.write_u32::<BigEndian>(self.origin_timestamp.seconds).unwrap();
-        vec.write_u32::<BigEndian>(self.origin_timestamp.fraction).unwrap();
-        vec.write_u32::<BigEndian>(self.receive_timestamp.seconds).unwrap();
-        vec.write_u32::<BigEndian>(self.receive_timestamp.fraction).unwrap();
-        vec.write_u32::<BigEndian>(self.transmit_timestamp.seconds).unwrap();
-        vec.write_u32::<BigEndian>(self.transmit_timestamp.fraction).unwrap();
-        vec
+        try!(vec.write_u32::<BigEndian>(self.root_delay));
+        try!(vec.write_u32::<BigEndian>(self.root_dispersion));
+        try!(vec.write_u32::<BigEndian>(self.reference_id));
+        try!(vec.write_u32::<BigEndian>(self.reference_timestamp.seconds));
+        try!(vec.write_u32::<BigEndian>(self.reference_timestamp.fraction));
+        try!(vec.write_u32::<BigEndian>(self.origin_timestamp.seconds));
+        try!(vec.write_u32::<BigEndian>(self.origin_timestamp.fraction));
+        try!(vec.write_u32::<BigEndian>(self.receive_timestamp.seconds));
+        try!(vec.write_u32::<BigEndian>(self.receive_timestamp.fraction));
+        try!(vec.write_u32::<BigEndian>(self.transmit_timestamp.seconds));
+        try!(vec.write_u32::<BigEndian>(self.transmit_timestamp.fraction));
+        Ok(vec)
     }
 
-    pub fn decode(size: usize, buf: & [u8]) -> NTPHeader {
+    pub fn decode(size: usize, buf: & [u8]) -> Result<NTPHeader, IoError> {
         let mut reader = Cursor::new(buf);
         let mut header = NTPHeader::new();
 
         if size < NTP_HEADER_SIZE {
-            panic!("{} bytes expected in NTP header; {} bytes received", NTP_HEADER_SIZE, size);
+            return Err(IoError::new(IoErrorKind::Other,
+                "Unexpected number of bytes in NTP datagram",
+                Option::Some(format!("{} bytes expected in NTP header; {} bytes received", NTP_HEADER_SIZE, size))));
         }
 
-        let leap_version_mode = reader.read_u8().unwrap();
+        let leap_version_mode = try!(reader.read_u8());
         header.leap = (leap_version_mode >> LEAP_SHIFT) & 0b11;
         header.version = (leap_version_mode >> VERSION_SHIFT) & 0b111;
         header.mode = leap_version_mode & 0b111;
-        header.stratum = reader.read_u8().unwrap();
-        header.poll = reader.read_u8().unwrap();
-        header.precision = reader.read_u8().unwrap();
-        header.root_delay = reader.read_u32::<BigEndian>().unwrap();
-        header.root_dispersion = reader.read_u32::<BigEndian>().unwrap();
-        header.reference_id = reader.read_u32::<BigEndian>().unwrap();
-        header.reference_timestamp.seconds = reader.read_u32::<BigEndian>().unwrap();
-        header.reference_timestamp.fraction = reader.read_u32::<BigEndian>().unwrap();
-        header.origin_timestamp.seconds = reader.read_u32::<BigEndian>().unwrap();
-        header.origin_timestamp.fraction = reader.read_u32::<BigEndian>().unwrap();
-        header.receive_timestamp.seconds = reader.read_u32::<BigEndian>().unwrap();
-        header.receive_timestamp.fraction = reader.read_u32::<BigEndian>().unwrap();
-        header.transmit_timestamp.seconds = reader.read_u32::<BigEndian>().unwrap();
-        header.transmit_timestamp.fraction = reader.read_u32::<BigEndian>().unwrap();
+        header.stratum = try!(reader.read_u8());
+        header.poll = try!(reader.read_u8());
+        header.precision = try!(reader.read_u8());
+        header.root_delay = try!(reader.read_u32::<BigEndian>());
+        header.root_dispersion = try!(reader.read_u32::<BigEndian>());
+        header.reference_id = try!(reader.read_u32::<BigEndian>());
+        header.reference_timestamp.seconds = try!(reader.read_u32::<BigEndian>());
+        header.reference_timestamp.fraction = try!(reader.read_u32::<BigEndian>());
+        header.origin_timestamp.seconds = try!(reader.read_u32::<BigEndian>());
+        header.origin_timestamp.fraction = try!(reader.read_u32::<BigEndian>());
+        header.receive_timestamp.seconds = try!(reader.read_u32::<BigEndian>());
+        header.receive_timestamp.fraction = try!(reader.read_u32::<BigEndian>());
+        header.transmit_timestamp.seconds = try!(reader.read_u32::<BigEndian>());
+        header.transmit_timestamp.fraction = try!(reader.read_u32::<BigEndian>());
 
-        header
+        Ok(header)
     }
 }

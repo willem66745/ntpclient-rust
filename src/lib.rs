@@ -3,7 +3,7 @@ extern crate byteorder;
 
 mod ntp;
 
-use std::net::{UdpSocket};
+use std::net::UdpSocket;
 use time::Timespec;
 
 const NTP_PORT: u16 = 123;
@@ -16,7 +16,7 @@ const UDP_LOCAL: &'static str = "0.0.0.0:35000";
 /// * `host` - The NTP server (i.e. sundial.columbia.edu).
 pub fn retrieve_ntp_timestamp(host: &str) -> Result<Timespec, std::io::Error> {
     let header = ntp::NTPHeader::new();
-    let message = header.encode();
+    let message = try!(header.encode());
 
     let socket = try!(UdpSocket::bind(UDP_LOCAL));
 
@@ -30,7 +30,7 @@ pub fn retrieve_ntp_timestamp(host: &str) -> Result<Timespec, std::io::Error> {
 
     drop(socket);
 
-    let header = ntp::NTPHeader::decode(amt, &buf);
+    let header = try!(ntp::NTPHeader::decode(amt, &buf));
 
     Ok(header.transmit_timestamp.as_timespec())
 }
