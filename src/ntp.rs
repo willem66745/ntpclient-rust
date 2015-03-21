@@ -2,10 +2,8 @@
 
 use std::num::Float;
 use time::Timespec;
-use std::io::Cursor;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io::Error as IoError;
-use std::io::ErrorKind as IoErrorKind;
+use std::io;
 
 const NTP_CLIENT: u8 = 3;
 const NTP_HEADER_SIZE: usize = 48; // 12 words
@@ -63,7 +61,7 @@ impl NTPHeader {
         }
     }
 
-    fn encode_first_word<T>(&self, w: &mut T) -> Result<(), IoError> where T: WriteBytesExt {
+    fn encode_first_word<T>(&self, w: &mut T) -> Result<(), io::Error> where T: WriteBytesExt {
         try!(w.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode));
         try!(w.write_u8(self.stratum));
         try!(w.write_u8(self.poll));
@@ -71,7 +69,7 @@ impl NTPHeader {
         Ok(())
     }
 
-    pub fn encode(&self) -> Result<Vec<u8>, IoError> {
+    pub fn encode(&self) -> Result<Vec<u8>, io::Error> {
         let mut vec = Vec::<u8>::new();
 
         // TODO: since Vec still implements old_io::Write trait the next 4 lines does not compile
@@ -97,12 +95,12 @@ impl NTPHeader {
         Ok(vec)
     }
 
-    pub fn decode(size: usize, buf: & [u8]) -> Result<NTPHeader, IoError> {
-        let mut reader = Cursor::new(buf);
+    pub fn decode(size: usize, buf: & [u8]) -> Result<NTPHeader, io::Error> {
+        let mut reader = io::Cursor::new(buf);
         let mut header = NTPHeader::new();
 
         if size < NTP_HEADER_SIZE {
-            return Err(IoError::new(IoErrorKind::Other,
+            return Err(io::Error::new(io::ErrorKind::Other,
                 "Unexpected number of bytes in NTP datagram",
                 Option::Some(format!("{} bytes expected in NTP header; {} bytes received", NTP_HEADER_SIZE, size))));
         }
