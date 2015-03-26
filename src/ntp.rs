@@ -61,26 +61,13 @@ impl NTPHeader {
         }
     }
 
-    fn encode_first_word<T>(&self, w: &mut T) -> Result<(), io::Error> where T: WriteBytesExt {
-        try!(w.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode));
-        try!(w.write_u8(self.stratum));
-        try!(w.write_u8(self.poll));
-        try!(w.write_u8(self.precision));
-        Ok(())
-    }
-
     pub fn encode(&self) -> Result<Vec<u8>, io::Error> {
         let mut vec = Vec::<u8>::new();
 
-        // TODO: since Vec still implements old_io::Write trait the next 4 lines does not compile
-        //try!(vec.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode));
-        //try!(vec.write_u8(self.stratum));
-        //try!(vec.write_u8(self.poll));
-        //try!(vec.write_u8(self.precision));
-
-        // TODO: remove workaround when possible
-        try!(self.encode_first_word(&mut vec));
-
+        try!(vec.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode));
+        try!(vec.write_u8(self.stratum));
+        try!(vec.write_u8(self.poll));
+        try!(vec.write_u8(self.precision));
         try!(vec.write_u32::<BigEndian>(self.root_delay));
         try!(vec.write_u32::<BigEndian>(self.root_dispersion));
         try!(vec.write_u32::<BigEndian>(self.reference_id));
