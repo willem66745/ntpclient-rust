@@ -7,6 +7,7 @@ mod error;
 use std::net::UdpSocket;
 use time::Timespec;
 pub use error::Error;
+pub use ntp::NTPHeader;
 
 const NTP_PORT: u16 = 123;
 const UDP_LOCAL: &'static str = "0.0.0.0:35000";
@@ -17,7 +18,7 @@ const UDP_LOCAL: &'static str = "0.0.0.0:35000";
 ///
 /// * `host` - The NTP server (i.e. sundial.columbia.edu).
 pub fn retrieve_ntp_timestamp(host: &str) -> Result<Timespec, Error> {
-    let header = ntp::NTPHeader::new();
+    let header = NTPHeader::new();
     let message = try!(header.encode());
 
     let socket = try!(UdpSocket::bind(UDP_LOCAL));
