@@ -4,6 +4,7 @@ use std::num::Float;
 use time::Timespec;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
+use error;
 
 const NTP_CLIENT: u8 = 3;
 const NTP_HEADER_SIZE: usize = 48; // 12 words
@@ -61,7 +62,7 @@ impl NTPHeader {
         }
     }
 
-    pub fn encode(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn encode(&self) -> Result<Vec<u8>, error::Error> {
         let mut vec = Vec::<u8>::new();
 
         try!(vec.write_u8(self.leap << LEAP_SHIFT | self.version << VERSION_SHIFT | self.mode));
@@ -82,14 +83,12 @@ impl NTPHeader {
         Ok(vec)
     }
 
-    pub fn decode(size: usize, buf: & [u8]) -> Result<NTPHeader, io::Error> {
+    pub fn decode(size: usize, buf: & [u8]) -> Result<NTPHeader, error::Error> {
         let mut reader = io::Cursor::new(buf);
         let mut header = NTPHeader::new();
 
         if size < NTP_HEADER_SIZE {
-            return Err(io::Error::new(io::ErrorKind::Other,
-                "Unexpected number of bytes in NTP datagram",
-                Option::Some(format!("{} bytes expected in NTP header; {} bytes received", NTP_HEADER_SIZE, size))));
+            return Err(error::Error::UnexpectedSize(NTP_HEADER_SIZE, size));
         }
 
         let leap_version_mode = try!(reader.read_u8());
