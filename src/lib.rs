@@ -29,7 +29,7 @@ pub fn retrieve_ntp_timestamp(host: &str) -> Result<Timespec, Error> {
     let mut buf = [0u8; 1000];
 
     // TODO: Rust doesn't support timeouts yet
-    let (amt, _) = try!(socket.recv_from(buf.as_mut_slice()));
+    let (amt, _) = try!(socket.recv_from(&mut buf));
 
     drop(socket);
 
