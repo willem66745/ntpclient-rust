@@ -1,6 +1,5 @@
 //! Tools to retrieve Internet-time using NTP protocol.
 
-use std::num::Float;
 use time::Timespec;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
