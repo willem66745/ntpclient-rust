@@ -1,24 +1,23 @@
 use std::error;
-use std::error::FromError;
 use std::io;
 use std::fmt;
 use byteorder;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub enum Error {
     UnexpectedSize(usize, usize),
     Io(io::Error),
     Byteorder(byteorder::Error)
 }
 
-impl FromError<io::Error> for Error {
-    fn from_error(err: io::Error) -> Error {
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Error {
         Error::Io(err)
     }
 }
 
-impl FromError<byteorder::Error> for Error {
-    fn from_error(err: byteorder::Error) -> Error {
+impl From<byteorder::Error> for Error {
+    fn from(err: byteorder::Error) -> Error {
         Error::Byteorder(err)
     }
 }
