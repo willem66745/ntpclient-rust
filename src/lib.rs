@@ -40,7 +40,7 @@ pub fn retrieve_ntp_timestamp(host: &str) -> Result<Timespec, Error> {
 
 #[test]
 fn receive_timestamp() {
-    const NTP_SERVER: &'static str = "ntp.xs4all.nl";
+    const NTP_SERVER: &'static str = "pool.ntp.org";
 
     let t1 = retrieve_ntp_timestamp(NTP_SERVER).unwrap();
     let t2 = retrieve_ntp_timestamp(NTP_SERVER).unwrap();
