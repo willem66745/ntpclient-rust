@@ -15,13 +15,15 @@ const VERSION_SHIFT: i32 = 3;
 #[derive(Debug)]
 pub struct NTPTimestamp {
     seconds: u32,
-    fraction: u32
+    fraction: u32,
 }
 
 impl NTPTimestamp {
     pub fn as_timespec(&self) -> Timespec {
-        Timespec{sec: (self.seconds as i64) - NTP_TO_UNIX_EPOCH,
-                 nsec: (((self.fraction as f64) / 2f64.powi(32) ) / 1e-9) as i32}
+        Timespec {
+            sec: (self.seconds as i64) - NTP_TO_UNIX_EPOCH,
+            nsec: (((self.fraction as f64) / 2f64.powi(32)) / 1e-9) as i32,
+        }
     }
 }
 
@@ -51,13 +53,25 @@ impl NTPHeader {
             stratum: 0,
             poll: 0,
             precision: 0,
-            root_delay : 0,
-            root_dispersion : 0,
-            reference_id : 0,
-            reference_timestamp : NTPTimestamp{seconds:0, fraction:0},
-            origin_timestamp : NTPTimestamp{seconds:0, fraction:0},
-            receive_timestamp : NTPTimestamp{seconds:0, fraction:0},
-            transmit_timestamp : NTPTimestamp{seconds:0, fraction:0}
+            root_delay: 0,
+            root_dispersion: 0,
+            reference_id: 0,
+            reference_timestamp: NTPTimestamp {
+                seconds: 0,
+                fraction: 0,
+            },
+            origin_timestamp: NTPTimestamp {
+                seconds: 0,
+                fraction: 0,
+            },
+            receive_timestamp: NTPTimestamp {
+                seconds: 0,
+                fraction: 0,
+            },
+            transmit_timestamp: NTPTimestamp {
+                seconds: 0,
+                fraction: 0,
+            },
         }
     }
 
@@ -82,7 +96,7 @@ impl NTPHeader {
         Ok(vec)
     }
 
-    pub fn decode(size: usize, buf: & [u8]) -> Result<NTPHeader, error::Error> {
+    pub fn decode(size: usize, buf: &[u8]) -> Result<NTPHeader, error::Error> {
         let mut reader = io::Cursor::new(buf);
         let mut header = NTPHeader::new();
 

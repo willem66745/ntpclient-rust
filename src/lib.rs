@@ -23,7 +23,7 @@ pub fn retrieve_ntp_timestamp(host: &str) -> Result<Timespec, Error> {
 
     let socket = try!(UdpSocket::bind(UDP_LOCAL));
 
-    let host = format!("{host}:{port}", host=host, port=NTP_PORT);
+    let host = format!("{host}:{port}", host = host, port = NTP_PORT);
     try!(socket.send_to(&message[..], &host[..]));
 
     let mut buf = [0u8; 1000];
